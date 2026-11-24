@@ -1,0 +1,20 @@
+# Cambios
+
+Versionado semántico (`MAYOR.MENOR.PARCHE`). La versión vive en `fishcounter/__init__.py`.
+- **MAYOR**: cambia el formato de los perfiles o el conteo de un mismo video.
+- **MENOR**: funciones nuevas que no cambian el conteo.
+- **PARCHE**: correcciones.
+
+## 1.0.0 - 2026-11-23
+### Añadido
+- Interfaz PySide6: abrir video, cinco grupos de técnicas con la entrada y la salida de cada una,
+  vista ampliada (lado a lado, deslizador, diferencias), zoom compartido, reproducción cuadro a
+  cuadro, velocidades e «ir al siguiente caso».
+- Conteo confirmado, recuperado y pendiente. El conteo se bloquea si el video no tiene la resolución
+  calibrada.
+- Perfiles por pez (lubina, carpín, trucha) y panel de ajustes por técnica, generados a partir de una
+  única lista de parámetros.
+- Núcleo sin dependencias de Qt y conteo por línea de comandos.
+### Comprobado
+- Detecciones, identidades y conteo idénticos a `conteo_v3` (tracking + recuperación) en los 52 videos
+  de FCDataZJU.

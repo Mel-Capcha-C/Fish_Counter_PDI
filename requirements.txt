@@ -1,0 +1,13 @@
+# Entorno de la PC (Python 3.13), carpeta "fcounter":
+#   py -3.13 -m venv fcounter
+#   fcounter\Scripts\python -m pip install -r requirements.txt
+#
+# Versiones con las que se probó.
+numpy==2.5.5
+opencv-python==5.1.0.95     # con ventanas (cv2.imshow); no instalar a la vez que la versión headless
+scipy==1.18.1               # asignación húngara del tracking
+PySide6-Essentials==6.12.0  # interfaz (fishcounter/gui)
+
+# Raspberry Pi: usar los paquetes del sistema en lugar de este archivo:
+#   sudo apt install python3-picamera2 python3-opencv python3-numpy python3-scipy
+# Para la interfaz en Linux, evitar el opencv-python de pip junto a PySide6 (trae sus propios plugins Qt).

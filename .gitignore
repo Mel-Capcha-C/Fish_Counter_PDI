@@ -1,0 +1,32 @@
+# Entornos y cachés
+fcounter/
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Datos pesados o de terceros (no se redistribuyen)
+21601548/
+Antecedentes/
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.npz
+*.pkl
+
+# Imágenes y documentos: contienen cuadros del dataset o material con licencia no confirmada
+*.png
+*.jpg
+*.jpeg
+*.pdf
+*.xlsx
+*.csv
+camera_check/
+explicacion/
+
+# Llaves y secretos
+.env
+*.pem
+*.ppk
+id_*

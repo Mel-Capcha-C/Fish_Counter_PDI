@@ -1,0 +1,100 @@
+# =====================================================================
+#  Contador de truchas - configuración
+#  Todas las distancias "_px" están en píxeles de la FRANJA de salida.
+#  Todas las magnitudes "_mm" se convierten con geometry.mm_per_px.
+# =====================================================================
+
+[camera]
+# Técnica 1 - Recorte del sensor (ROI de captura)
+# Modo de sensor. La cámara instalada es un IMX708 (Camera Module 3, 12 Mpx):
+#   1536x864  hasta 120 fps (binning 2x2 sobre un recorte central de 3072x1728)
+#   2304x1296 hasta  56 fps (binning 2x2, campo de visión completo)
+#   4608x2592 hasta  14 fps (resolución completa)
+# Verifica los modos disponibles con:  rpicam-hello --list-cameras
+sensor_mode_size = [1536, 864]
+output_width = 640          # ancho transversal de la franja (px de salida)
+strip_rows = 64             # filas de la franja en la dirección del flujo
+strip_center_frac = 0.5     # posición de la franja a lo largo del flujo (0..1)
+fps = 100
+# Eje del flujo en la imagen del sensor: "y" (el pez avanza de arriba a abajo
+# o al revés) o "x" (avanza de izquierda a derecha o al revés).
+flow_axis = "y"
+flow_reversed = false       # true si el pez avanza hacia -y (o -x)
+
+# Técnica 2 - Exposición, ganancia y balance de blancos fijos
+exposure_us = 400           # corta: limita el desenfoque por movimiento
+analogue_gain = 1.5
+colour_gains = [1.6, 1.6]   # rojo, azul (fija el AWB)
+buffer_count = 6
+# Enfoque fijo (cámaras con autofoco, como el IMX708). En dioptrías = 1 / distancia_m
+# (p. ej. 4.0 = 25 cm). Ajústalo a la distancia cámara-acrílico.
+lens_position = 4.0
+
+[geometry]
+mm_per_px = 0.40            # medir con una regla sobre el acrílico
+line_a_row = 8              # línea de barrido A (primaria, cuenta)
+line_b_row = 56             # línea de barrido B (velocidad y sentido)
+line_thickness = 3          # filas que se combinan (OR) en cada línea
+
+[preprocess]
+# Técnica 4 - Corrección flat-field
+target_level = 200          # nivel al que se lleva el fondo tras la corrección
+background_update = true    # actualizar el fondo en cuadros vacíos (deriva LED)
+background_alpha = 0.02     # velocidad de actualización del fondo
+# Técnica 5 - Suavizado
+filter = "gaussian"         # "gaussian" | "median" | "none"
+ksize = 3
+
+[segmentation]
+# Técnica 6 - Umbral global fijo (se calcula con Otsu en la calibración)
+# Si calibration.npz existe, su umbral reemplaza a este valor.
+threshold = 120
+otsu_min_effectiveness = 0.70   # separabilidad mínima aceptable del histograma
+
+[morphology]
+# Técnica 7 - Cierre y apertura
+close_ksize = 5             # une cuerpo y cola / aletas translúcidas
+open_ksize = 3              # elimina puntos sueltos (burbujas, cáusticas)
+st_close_ksize = 3          # cierre suave también sobre la imagen espacio-temporal
+
+[scanline]
+# Técnica 8 - Imagen espacio-temporal
+gap_frames = 4              # cuadros vacíos que cierran una "pasada"
+max_event_frames = 600      # corte de seguridad (pez detenido / suciedad)
+
+[velocity]
+# Técnica añadida - Doble línea para normalizar por velocidad
+default_px_per_frame = 10.0
+min_px_per_frame = 1.0
+max_px_per_frame = 60.0
+history = 30
+
+[blobs]
+# Técnica 9 - Componentes conexos con filtro por área
+min_area_frac = 0.25        # fracción del área de un pez individual
+connectivity = 8
+
+[batch]
+# Técnica 12 - Área calibrada por lote (valores iniciales, luego se adaptan)
+length_range_mm = [40, 70]  # rango de tallas del lote clasificado
+width_ratio = 0.16          # ancho dorsal / largo (vista superior)
+shape_factor = 0.70         # área / (largo * ancho) de la silueta
+history = 60                # peces individuales usados en la mediana móvil
+
+[validation]
+# Técnica 10 - Ancho transversal del blob, relativo al largo (aspecto)
+# r = (ancho/largo del blob) / (ancho/largo de un pez individual)
+aspect_wide_factor = 1.45   # r > factor -> peces lado a lado
+aspect_long_factor = 0.65   # r < factor -> peces en fila (cabeza con cola)
+area_factor = 1.60          # área > factor * área individual -> grupo compacto
+area_strong_factor = 2.20   # sólo por área: contar >1 si supera este factor
+
+[separation]
+# Técnica 11 - Transformada de distancia + Watershed (selectivo)
+dist_threshold_frac = 0.60  # semillas: dist > frac * max(dist)
+min_piece_frac = 0.35       # cada trozo debe tener >= frac * área individual
+neck_frac = 0.75            # corte válido sólo si divisoria < frac * ancho del trozo
+
+[output]
+csv_path = "conteo.csv"
+report_every_s = 5.0

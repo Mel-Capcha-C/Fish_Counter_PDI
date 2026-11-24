@@ -1,0 +1,21 @@
+{
+ "version_esquema": 1,
+ "tipo": "canal",
+ "id": "fcdatazju",
+ "nombre": "Canal FCDataZJU",
+ "valores": {
+  "ancho": 1280,
+  "alto": 720,
+  "roi_x0": 66,
+  "roi_y0": 36,
+  "fondo_cuadros": 60,
+  "nivel": 200.0,
+  "gauss": 3,
+  "max_perdidos": 1,
+  "vistas_por_pez": 2.8,
+  "margen_entrada": 30.0,
+  "margen_salida": 40.0,
+  "borde": 4.0,
+  "vistas_min": 2
+ }
+}
