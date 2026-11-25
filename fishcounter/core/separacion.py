@@ -142,6 +142,11 @@ def _cimas_rapido(f: np.ndarray, p: Perfil, paso: float) -> list[tuple[int, int,
         return []
     ts = np.arange(mx - paso, 0.2, -paso)
     ult = len(ts) - 1
+    if ult < 0:
+        return []
+    if mx < p.cima_min:                      # ningún segundo cuerpo puede aceptarse
+        r, c = np.unravel_index(f.argmax(), f.shape)
+        return [(int(r) - 1, int(c) - 1, 0.0)]
     aceptadas: list[tuple[int, int, float]] = []
 
     def nivel(i):
@@ -216,25 +221,38 @@ def _cimas_rapido(f: np.ndarray, p: Perfil, paso: float) -> list[tuple[int, int,
 
 
 def repartir(f: np.ndarray, s: list, mask: np.ndarray, paso: float = 0.8) -> np.ndarray:
-    """Asigna cada píxel de la mancha a una cima, creciendo por niveles descendentes."""
-    lab = np.zeros(f.shape, np.uint8)
+    """Asigna cada píxel de la mancha a una cima, creciendo por niveles descendentes.
+
+    Cada píxel libre toma la mayor etiqueta de sus 8 vecinos, todos a la vez. Se trabaja sobre la
+    lista de píxeles pendientes y no sobre la imagen entera.
+    """
+    h, w = f.shape
+    ancho = w + 2                                        # borde de un píxel: sin comprobar límites
+    sem = np.zeros((h, w), np.uint8)
     for i, (r, c, _) in enumerate(s):
-        cv2.circle(lab, (c, r), 2, i + 1, -1)
-    m255 = cv2.compare(mask, 0, cv2.CMP_GT)
-    lab = cv2.bitwise_and(lab, m255)
-    libre = cv2.bitwise_and(cv2.compare(lab, 0, cv2.CMP_EQ), m255)     # dentro de la mancha y sin asignar
-    crece, nuevo = np.empty_like(lab), np.empty_like(lab)
-    for t in [*np.arange(float(f.max()) - paso, 0, -paso), -1.0]:
-        region = cv2.bitwise_and((f > t).astype(np.uint8) * 255, libre)
-        while True:
-            cv2.dilate(lab, _K33, crece)
-            cv2.bitwise_and(cv2.compare(crece, 0, cv2.CMP_GT), region, nuevo)
-            if not cv2.countNonZero(nuevo):
+        cv2.circle(sem, (c, r), 2, i + 1, -1)
+    sem[mask == 0] = 0
+    lab = np.zeros((h + 2, ancho), np.uint8)
+    lab[1:-1, 1:-1] = sem
+    ts = np.array([*np.arange(float(f.max()) - paso, 0, -paso), -1.0])
+    ys, xs = np.nonzero((mask > 0) & (sem == 0))
+    nivel = np.searchsorted(-ts, -f[ys, xs].astype(np.float64), side="right")     # primer t con f > t
+    orden = np.argsort(nivel, kind="stable")
+    idx = ((ys + 1) * ancho + xs + 1)[orden]
+    corte = np.searchsorted(nivel[orden], np.arange(len(ts) + 1))
+    vecinos = np.array([-ancho - 1, -ancho, -ancho + 1, -1, 1, ancho - 1, ancho, ancho + 1])
+    plano, pend = lab.ravel(), idx[:0]
+    for k in range(len(ts)):
+        nuevos = idx[corte[k]:corte[k + 1]]
+        pend = np.concatenate((pend, nuevos)) if len(pend) else nuevos
+        while len(pend):
+            e = plano[pend[:, None] + vecinos].max(axis=1)
+            ok = e > 0
+            if not ok.any():
                 break
-            cv2.copyTo(crece, nuevo, lab)
-            cv2.subtract(region, nuevo, region)
-            cv2.subtract(libre, nuevo, libre)
-    return lab
+            plano[pend[ok]] = e[ok]
+            pend = pend[~ok]
+    return lab[1:-1, 1:-1]
 
 
 def analizar(m: Mancha, p: Perfil) -> Analisis:

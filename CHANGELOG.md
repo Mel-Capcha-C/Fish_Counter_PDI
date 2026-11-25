@@ -5,6 +5,17 @@ Versionado semántico (`MAYOR.MENOR.PARCHE`). La versión vive en `fishcounter/_
 - **MENOR**: funciones nuevas que no cambian el conteo.
 - **PARCHE**: correcciones.
 
+## 1.2.0 - 2026-11-24
+### Rendimiento
+- En una Raspberry Pi 5, de 19,4 a 9,4 ms por cuadro de media; el más lento, de 202 a 108 ms.
+- Máximos por persistencia: sólo se evalúan los niveles que pueden cambiar el resultado.
+- Crecimiento de regiones: por lista de píxeles pendientes.
+- Objetos estáticos: la reducción exacta se calcula sólo si una cota barata dice que puede haber alguno.
+- Campo plano por bloques en dos hilos; apertura y componentes sólo donde hay píxeles oscuros.
+### Comprobado
+- Detecciones, identidades y conteo idénticos a `algoritmo-v1` en los 52 videos (PC) y en 4 videos en la
+  Raspberry Pi. `tests/test_optimizacion.py` compara cada rutina con su definición simple.
+
 ## 1.1.0 - 2026-11-24
 ### Añadido
 - `fishcounter/bench.py`: tiempo por cuadro sin interfaz (PC o Raspberry Pi), con desglose por técnica.

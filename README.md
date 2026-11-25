@@ -22,7 +22,7 @@ fcounter\Scripts\python -m fishcounter.cli video.mp4 --pez lubina
 Pruebas (las que usan el dataset se omiten si no está):
 
 ```bash
-fcounter\Scripts\python -m unittest tests.test_nucleo tests.test_interfaz
+fcounter\Scripts\python -m unittest tests.test_nucleo tests.test_optimizacion tests.test_interfaz
 ```
 
 ## Estructura
@@ -72,6 +72,15 @@ Referencia del algoritmo v1 en una Raspberry Pi 5 (OpenCV 4.10, 4 hilos), en `be
 | m8 | 19,4 ms | 12,2 | 48,6 | 118 | 494 |
 | m21 | 21,1 ms | 15,1 | 51,4 | 110 | 986 |
 | m26 | 21,9 ms | 14,3 | 54,9 | 201 | 985 |
+
+Versión 1.2.0 (optimizada), con los mismos conteos:
+
+| Video | Media | Mediana | p95 | Máximo | Conteo |
+|---|---|---|---|---|---|
+| m4 | 4,8 ms | 3,4 | 12,0 | 28 | 198 |
+| m8 | 9,3 ms | 5,3 | 26,5 | 78 | 494 |
+| m21 | 11,2 ms | 7,7 | 32,4 | 82 | 986 |
+| m26 | 10,9 ms | 6,7 | 31,6 | 108 | 985 |
 
 ## Volver al algoritmo original
 
