@@ -103,7 +103,7 @@ class Motor:
         binaria = sg.umbralizar(g, p)
         abierta = sg.abrir(binaria, p)
         comps = sg.componentes(abierta, g, p)
-        mov, est = self.estaticos.filtrar(g, comps[0])
+        mov, est = self.estaticos.filtrar(g, comps[0], binaria)
         dets, an = sp.detecciones(mov, p)
         # Intermedios SÓLO del último cuadro: evitan recalcular al dibujarlo
         self.ultimo = (k, dict(roi=roi, plano=plano, g=g, binaria=binaria, abierta=abierta, comps=comps,

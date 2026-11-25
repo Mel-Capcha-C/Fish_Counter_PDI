@@ -87,7 +87,7 @@ def pasada(cuadros, p, fondo):
 
 def desglose(cuadros, p, fondo) -> dict[str, float]:
     """ms medios por cuadro de cada técnica."""
-    ac, orig = defaultdict(float), []
+    ac, veces, orig = defaultdict(float), defaultdict(int), []
 
     def envolver(nombre, f):
         def g(*a, **k):
@@ -96,6 +96,7 @@ def desglose(cuadros, p, fondo) -> dict[str, float]:
                 return f(*a, **k)
             finally:
                 ac[nombre] += time.perf_counter() - t
+                veces[nombre] += 1
         return g
     try:
         for nombre, donde, fn in ETAPAS:
@@ -107,8 +108,8 @@ def desglose(cuadros, p, fondo) -> dict[str, float]:
         for donde, fn, f in orig:
             setattr(donde, fn, f)
     d = {n: ac[n] / len(cuadros) * 1e3 for n, _, _ in ETAPAS}
-    # ``umbralizar`` se llama dos veces por cuadro (también dentro de ``filtrar``, que ya la incluye)
-    d["umbral"] /= 2
+    # Si ``umbralizar`` se llama también dentro de ``filtrar`` (algoritmo-v1), no se cuenta dos veces
+    d["umbral"] /= max(veces["umbral"] / len(cuadros), 1)
     return d
 
 

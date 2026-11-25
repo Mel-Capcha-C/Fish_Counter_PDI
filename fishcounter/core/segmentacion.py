@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections import deque
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 import cv2
@@ -22,15 +23,30 @@ class Mancha:
 
 def recortar(bgr: np.ndarray, p: Perfil) -> np.ndarray:
     """Recorte de la ROI y conversión a luminancia."""
-    return cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)[p.roi_y0:, p.roi_x0:]
+    return cv2.cvtColor(bgr[p.roi_y0:, p.roi_x0:], cv2.COLOR_BGR2GRAY)
 
 
 def ganancia(fondo: np.ndarray, p: Perfil) -> np.ndarray:
     return p.nivel / np.maximum(fondo, 1.0)
 
 
+_TIRAS = 4                              # la imagen se corrige en tiras, en paralelo
+_hilos = ThreadPoolExecutor(_TIRAS, thread_name_prefix="campo")
+
+
 def campo_plano(roi: np.ndarray, gan: np.ndarray) -> np.ndarray:
-    return np.clip(roi * gan, 0, 255).astype(np.uint8)
+    """trunc(min(roi * gan, 255)); igual que ``np.clip(roi * gan, 0, 255).astype(np.uint8)``."""
+    gan = gan.astype(np.float32, copy=False)
+    h = roi.shape[0]
+    out = np.empty(roi.shape, np.uint8)
+
+    def tira(i):
+        z = slice(h * i // _TIRAS, h * (i + 1) // _TIRAS)
+        b = cv2.multiply(roi[z], gan[z], dtype=cv2.CV_32F)
+        cv2.min(b, 255.0, b)
+        np.copyto(out[z], b, casting="unsafe")
+    list(_hilos.map(tira, range(_TIRAS)))
+    return out
 
 
 def suavizar(img: np.ndarray, p: Perfil) -> np.ndarray:
@@ -38,7 +54,7 @@ def suavizar(img: np.ndarray, p: Perfil) -> np.ndarray:
 
 
 def umbralizar(g: np.ndarray, p: Perfil) -> np.ndarray:
-    return (g < p.umbral).astype(np.uint8)
+    return cv2.threshold(g, p.umbral - 1, 1, cv2.THRESH_BINARY_INV)[1]      # 1 donde g < umbral
 
 
 def abrir(m: np.ndarray, p: Perfil) -> np.ndarray:
@@ -74,26 +90,52 @@ class Estaticos:
 
     def __init__(self, p: Perfil):
         self.p = p
-        self.hist: deque = deque()
-        self.suma = None
+        self.hist: deque = deque()              # [binaria, reducida o None] de los últimos cuadros
 
-    def filtrar(self, g: np.ndarray, ms: list[Mancha]) -> tuple[list[Mancha], list[Mancha]]:
-        """(móviles, estáticas)."""
+    def _reducida(self, e) -> np.ndarray:
+        """Versión reducida de un cuadro; sólo se calcula si hace falta (es lo más caro)."""
+        if e[1] is None:
+            H, W = e[0].shape
+            ch = cv2.resize(e[0] * 255, (W // self.ESCALA, H // self.ESCALA), interpolation=cv2.INTER_AREA)
+            e[1] = (ch >= 128).astype(np.int16)
+        return e[1]
+
+    def _posible(self, m: Mancha) -> bool:
+        """Condición necesaria y barata: algo oscuro junto a la mancha en ``quietos_min`` cuadros."""
+        h, w = m.mask.shape
+        M = 2 * self.ESCALA
+        z = np.s_[max(m.y - M, 0):m.y + h + M, max(m.x - M, 0):m.x + w + M]
+        faltan, quedan = self.p.quietos_min, len(self.hist)
+        for e in self.hist:
+            if faltan > quedan:
+                return False
+            quedan -= 1
+            faltan -= bool(cv2.countNonZero(e[0][z]))
+            if faltan <= 0:
+                return True
+        return False
+
+    def filtrar(self, g: np.ndarray, ms: list[Mancha], binaria: np.ndarray | None = None
+                ) -> tuple[list[Mancha], list[Mancha]]:
+        """(móviles, estáticas). ``binaria`` es la umbralización de ``g``, si ya se calculó."""
         H, W = g.shape
-        ch = cv2.resize(umbralizar(g, self.p) * 255, (W // self.ESCALA, H // self.ESCALA),
-                        interpolation=cv2.INTER_AREA)
-        osc = (ch >= 128).astype(np.int16)
+        if binaria is None:
+            binaria = umbralizar(g, self.p)
         mov, est = ms, []
-        if self.suma is not None and self.suma.max() >= self.p.quietos_min:
-            per = cv2.resize((self.suma >= self.p.quietos_min).astype(np.uint8), (W, H),
-                             interpolation=cv2.INTER_NEAREST)
-            mov = []
-            for m in ms:
-                h, w = m.mask.shape
-                quieta = per[m.y:m.y + h, m.x:m.x + w][m.mask > 0].mean() >= self.p.quietos_fraccion
-                (est if quieta else mov).append(m)
-        self.suma = osc.copy() if self.suma is None else self.suma + osc
-        self.hist.append(osc)
+        dudosas = [m for m in ms if self._posible(m)] if len(self.hist) >= self.p.quietos_min else []
+        if dudosas:
+            suma = sum(self._reducida(e) for e in self.hist)
+            if suma.max() >= self.p.quietos_min:
+                per = cv2.resize((suma >= self.p.quietos_min).astype(np.uint8), (W, H),
+                                 interpolation=cv2.INTER_NEAREST)
+                ids = {id(m) for m in dudosas}
+                mov = []
+                for m in ms:
+                    h, w = m.mask.shape
+                    quieta = id(m) in ids and \
+                        per[m.y:m.y + h, m.x:m.x + w][m.mask > 0].mean() >= self.p.quietos_fraccion
+                    (est if quieta else mov).append(m)
+        self.hist.append([binaria, None])
         if len(self.hist) > self.p.quietos_ventana:
-            self.suma -= self.hist.popleft()
+            self.hist.popleft()
         return mov, est
