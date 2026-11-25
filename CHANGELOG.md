@@ -5,6 +5,14 @@ Versionado semántico (`MAYOR.MENOR.PARCHE`). La versión vive en `fishcounter/_
 - **MENOR**: funciones nuevas que no cambian el conteo.
 - **PARCHE**: correcciones.
 
+## 1.1.0 - 2026-11-24
+### Añadido
+- `fishcounter/bench.py`: tiempo por cuadro sin interfaz (PC o Raspberry Pi), con desglose por técnica.
+- `benchmarks/algoritmo-v1_pi5_4hilos.json`: medición de referencia en una Raspberry Pi 5.
+### Sin cambios
+- El algoritmo es idéntico al de 1.0.0. Queda congelado con la etiqueta `algoritmo-v1`, como punto de
+  retorno antes de optimizar.
+
 ## 1.0.0 - 2026-11-23
 ### Añadido
 - Interfaz PySide6: abrir video, cinco grupos de técnicas con la entrada y la salida de cada una,
